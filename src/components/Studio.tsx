@@ -97,7 +97,12 @@ export default function Studio() {
       if (!response.ok) throw new Error("unavailable");
       const parsed = ideasSchema.parse(data);
       if (number !== requestNumber.current) return;
-      setIdeas(parsed.ideas); setSource(data.source === "ai" ? "AI가 제안한 힌트예요. 만들 수 있을지 함께 살펴봐요." : "준비해 둔 예비 힌트예요. 우리 불편에 맞게 바꿔 봐요.");
+      const preparedMessages: Record<string, string> = {
+        limited: "AI 요청이 많아 준비된 예비 힌트를 보여드려요. 함께 이야기하며 바꿔 봐요.",
+        expired: "오늘의 AI 이용 시간이 끝났어요. 준비된 힌트로 계속할 수 있어요.",
+        unavailable: "AI 연결이 어려워 준비된 예비 힌트를 보여드려요.",
+      };
+      setIdeas(parsed.ideas); setSource(data.source === "ai" ? "AI가 제안한 힌트예요. 만들 수 있을지 함께 살펴봐요." : preparedMessages[data.reason] || "준비해 둔 예비 힌트예요. 우리 불편에 맞게 바꿔 봐요.");
     } catch {
       if (number !== requestNumber.current) return;
       setIdeas(fallbackIdeas(problem, mode, ideas.map(idea => idea.name))); setSource("AI 연결이 어려워 준비된 예비 힌트를 보여드려요.");
