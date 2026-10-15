@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>3D펜 여름 캠프 안전 라이선스 서약서 & 활동지 (A4 인쇄용)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    /* DESIGN.md Color Tokens & Typography */
+    :root {
+      --primary: #2563eb;
+      --primary-soft: #dbeafe;
+      --ink: #111827;
+      --body: #1f2937;
+      --muted: #6b7280;
+      --border: #d1d5db;
+      --border-soft: #e5e7eb;
+      --canvas: #ffffff;
+      --canvas-muted: #f9fafb;
+      --canvas-subtle: #f3f4f6;
+      --danger: #dc2626;
+      --danger-soft: #fee2e2;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    @page {
+      size: A4 portrait;
+      margin: 12mm 15mm;
+    }
+
+    body {
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--canvas-subtle);
+      color: var(--body);
+      display: flex;
+      justify-content: center;
+      padding: 20px 0;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    /* A4 Print Sheet Container */
+    .sheet-a4 {
+      width: 210mm;
+      min-height: 297mm;
+      background: var(--canvas);
+      border: 1px solid var(--border);
+      padding: 18mm 18mm 15mm 18mm;
+      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    /* Document Header */
+    .doc-header {
+      border-bottom: 2px solid var(--primary);
+      padding-bottom: 12px;
+      margin-bottom: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+
+    .doc-title-group h1 {
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--ink);
+      letter-spacing: -0.5px;
+    }
+
+    .doc-title-group p {
+      font-size: 13px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    .doc-badge {
+      background: var(--primary-soft);
+      color: var(--primary);
+      font-size: 12px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 4px;
+      border: 1px solid rgba(37, 99, 235, 0.2);
+    }
+
+    /* Student Information Form Table */
+    .info-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 18px;
+    }
+
+    .info-table th {
+      background: var(--canvas-muted);
+      border: 1px solid var(--border-soft);
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--ink);
+      padding: 8px 10px;
+      text-align: center;
+      width: 15%;
+    }
+
+    .info-table td {
+      border: 1px solid var(--border-soft);
+      font-size: 14px;
+      color: var(--body);
+      padding: 8px 12px;
+      width: 35%;
+    }
+
+    /* Section Headers */
+    .section-header {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--ink);
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .section-header::before {
+      content: '';
+      display: inline-block;
+      width: 4px;
+      height: 16px;
+      background: var(--primary);
+      border-radius: 2px;
+    }
+
+    /* Checkbox Rules List */
+    .rules-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 18px;
+    }
+
+    .rule-card {
+      background: var(--canvas-muted);
+      border: 1px solid var(--border-soft);
+      border-radius: 6px;
+      padding: 10px 12px;
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+    }
+
+    .custom-checkbox {
+      width: 18px;
+      height: 18px;
+      border: 2px solid var(--primary);
+      border-radius: 4px;
+      background: var(--canvas);
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .rule-content {
+      font-size: 12.5px;
+      line-height: 1.45;
+      color: var(--body);
+    }
+
+    .rule-content strong {
+      color: var(--ink);
+      font-weight: 700;
+    }
+
+    /* Idea Sketch Canvas Box */
+    .sketch-area {
+      border: 2px dashed var(--border);
+      border-radius: 8px;
+      background: var(--canvas);
+      height: 230px;
+      margin-bottom: 18px;
+      position: relative;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .sketch-watermark {
+      color: #94a3b8;
+      font-size: 13px;
+      text-align: center;
+      margin-top: 90px;
+      pointer-events: none;
+    }
+
+    .sketch-labels {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      color: var(--muted);
+      border-top: 1px solid var(--border-soft);
+      padding-top: 6px;
+    }
+
+    /* License Certificate Footer */
+    .certificate-footer {
+      background: var(--canvas-muted);
+      border: 1px solid var(--border-soft);
+      border-radius: 8px;
+      padding: 14px 18px;
+      text-align: center;
+    }
+
+    .cert-text {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--ink);
+      line-height: 1.5;
+      margin-bottom: 12px;
+    }
+
+    .sign-row {
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--body);
+      border-top: 1px dashed var(--border);
+      padding-top: 10px;
+    }
+
+    /* Print media rule */
+    @media print {
+      body {
+        background: none;
+        padding: 0;
+      }
+      .sheet-a4 {
+        border: none;
+        box-shadow: none;
+        width: 100%;
+        height: 100%;
+        padding: 0;
+      }
+      .no-print {
+        display: none !important;
+      }
+    }
+
+    /* Print Floating Button */
+    .print-btn-bar {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 1000;
+    }
+    .print-btn {
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .print-btn:hover {
+      background: #1d4ed8;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Floating Print Button (Hidden when printing) -->
+  <div class="print-btn-bar no-print">
+    <button class="print-btn" onclick="window.print()">🖨️ A4 학습지 인쇄하기</button>
+  </div>
+
+  <!-- A4 Sheet Container -->
+  <div class="sheet-a4">
+    
+    <div>
+      <!-- Header -->
+      <div class="doc-header">
+        <div class="doc-title-group">
+          <h1>🛡️ 3D펜 여름 캠프 안전 조종사 라이선스</h1>
+          <p>안전 수칙을 준수하고 상상을 현실로 만드는 3D펜 학습지</p>
+        </div>
+        <div class="doc-badge">Edu-Nexus 안전 교육</div>
+      </div>
+
+      <!-- Student Info -->
+      <table class="info-table">
+        <tr>
+          <th>소속 학교</th>
+          <td>___________________ 초등학교</td>
+          <th>학년 / 반</th>
+          <td>_____ 학년 _____ 반</td>
+        </tr>
+        <tr>
+          <th>성 명</th>
+          <td>___________________ (서명)</td>
+          <th>작성 일자</th>
+          <td>2026년 _____월 _____일</td>
+        </tr>
+      </table>
+
+      <!-- Section 1: Safety Rules Checklist -->
+      <div class="section-header">3D펜 안전 & 사용 6대 수칙 (지킬 수 있는 항목에 [v] 체크해요!)</div>
+      <div class="rules-grid">
+        
+        <div class="rule-card">
+          <div class="custom-checkbox"></div>
+          <div class="rule-content">
+            <strong>1. 🔥 200℃ 노즐 화상 주의</strong><br>
+            뜨거운 펜촉은 절대 터치하지 않고, 작품 잡는 왼손에 실리콘 골무를 착용해요.
+          </div>
+        </div>
+
+        <div class="rule-card">
+          <div class="custom-checkbox"></div>
+          <div class="rule-content">
+            <strong>2. ☕ 3D펜의 집은 머그컵!</strong><br>
+            펜을 손에서 놓거나 쉴 때는 팔 데임을 막기 위해 무조건 머그컵에 꽂아요.
+          </div>
+        </div>
+
+        <div class="rule-card">
+          <div class="custom-checkbox"></div>
+          <div class="rule-content">
+            <strong>3. 🐢 퇴출 후 5초 대기</strong><br>
+            필라멘트를 빼낼 때 힘으로 잡아당기지 않고 펜이 밀어낼 때까지 기다려요.
+          </div>
+        </div>
+
+        <div class="rule-card">
+          <div class="custom-checkbox"></div>
+          <div class="rule-content">
+            <strong>4. ✂️ 끝부분 일자(一) 자르기</strong><br>
+            필라멘트를 새로 넣기 전 가위로 끝을 똑바로 일자로 잘라서 넣어요.
+          </div>
+        </div>
+
+        <div class="rule-card">
+          <div class="custom-checkbox"></div>
+          <div class="rule-content">
+            <strong>5. ⏰ 30분 작업 후 5분 휴식</strong><br>
+            과열 멈춤 및 누출 예방을 위해 30분 사용 후 쉬어주고 창문을 환기해요.
+          </div>
+        </div>
+
+        <div class="rule-card">
+          <div class="custom-checkbox"></div>
+          <div class="rule-content">
+            <strong>6. 🏁 3단계 깔끔 마무리</strong><br>
+            수업 후 필라멘트를 완전히 빼내고, 전원을 끈 후 머그컵에서 식혀요.
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Section 2: Sketch Box -->
+      <div class="section-header">나의 여름 3D 작품 아이디어 설계도 (스케치 코너)</div>
+      <div class="sketch-area">
+        <div class="sketch-watermark">
+          ✏️ 이 공간에 만들고 싶은 작품(여름 키링 / 손부채 / 바다 무드등)을 연필로 자유롭게 스케치해 보세요.
+        </div>
+        <div class="sketch-labels">
+          <span>작품 이름: ___________________________</span>
+          <span>사용할 필라멘트 색상: ___________________________</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 3: Certificate Footer -->
+    <div class="certificate-footer">
+      <div class="cert-text">
+        위 어린이는 3D펜 고온형 PLA 사용 안전 수칙을 완벽히 이해하였으며,<br>
+        안전하고 창의적으로 작품을 제작할 준비가 되었으므로 <strong>'3D펜 안전 조종사'</strong>로 인증합니다.
+      </div>
+      <div class="sign-row">
+        <span>서약자 학생 성명: __________________ (인)</span>
+        <span>지도 교사 확인: __________________ (인)</span>
+      </div>
+    </div>
+
+  </div>
+
+</body>
+</html>

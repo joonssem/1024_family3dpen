@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>3D펜 여름 캠프 - 안전 수칙 & 차시별 발표 자료</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      /* DESIGN.md Color Tokens */
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --primary-soft: #dbeafe;
+      --secondary: #0f766e;
+      --secondary-soft: #ccfbf1;
+      --danger: #dc2626;
+      --danger-soft: #fee2e2;
+      --warning: #d97706;
+      --warning-soft: #ffedd5;
+      --success: #16a34a;
+      --success-soft: #dcfce7;
+      --ink: #111827;
+      --body: #1f2937;
+      --muted: #6b7280;
+      --border: #d1d5db;
+      --border-soft: #e5e7eb;
+      --canvas: #ffffff;
+      --canvas-muted: #f9fafb;
+      --canvas-subtle: #f3f4f6;
+      --shadow-panel: 0 1px 3px rgba(15, 23, 42, 0.08);
+
+      /* Slide Layout Parameters from DESIGN.md */
+      --slide-width: 1280px;
+      --slide-height: 720px; /* 16:9 Aspect Ratio */
+      --margin-x: 64px;
+      --topbar-height: 48px;
+      --title-top: 96px;
+      --content-start-y: 232px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--canvas-subtle);
+      color: var(--body);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    /* 16:9 Fixed Canvas Frame */
+    .slide-viewport {
+      width: var(--slide-width);
+      height: var(--slide-height);
+      background: var(--canvas);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      box-shadow: 0 10px 25px rgba(15, 23, 42, 0.1);
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Top Bar Header (48px fixed) */
+    .slide-topbar {
+      height: var(--topbar-height);
+      padding: 0 var(--margin-x);
+      background: var(--canvas-muted);
+      border-bottom: 1px solid var(--border-soft);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .location-badge {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--primary);
+      background: var(--primary-soft);
+      padding: 4px 10px;
+      border-radius: 4px;
+    }
+
+    .counter-text {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--muted);
+    }
+
+    /* Progress bar */
+    .progress-bar-track {
+      height: 3px;
+      width: 100%;
+      background: var(--border-soft);
+    }
+    .progress-bar-fill {
+      height: 100%;
+      width: 10%;
+      background: var(--primary);
+      transition: width 0.3s ease;
+    }
+
+    /* Main Slide Canvas Body */
+    .slide-content-area {
+      flex: 1;
+      position: relative;
+      padding: 0 var(--margin-x);
+    }
+
+    .slide-page {
+      display: none;
+      position: absolute;
+      top: 0;
+      left: var(--margin-x);
+      right: var(--margin-x);
+      bottom: 0;
+    }
+
+    .slide-page.active {
+      display: block;
+    }
+
+    /* Unified Title Block Alignment (Starts at 96px from top of viewport) */
+    .title-block {
+      position: absolute;
+      top: 48px; /* 48px (topbar) + 48px = 96px from top of viewport */
+      left: 0;
+      right: 0;
+    }
+
+    .main-title {
+      font-size: 42px;
+      font-weight: 800;
+      line-height: 1.15;
+      color: var(--ink);
+      letter-spacing: -0.5px;
+    }
+
+    .main-title .emphasis {
+      color: var(--primary);
+    }
+    .main-title .danger-emphasis {
+      color: var(--danger);
+    }
+
+    .subtitle {
+      font-size: 20px;
+      font-weight: 400;
+      color: var(--muted);
+      margin-top: 12px;
+      line-height: 1.4;
+    }
+
+    /* Primary Body Content (Starts at 232px from top of viewport) */
+    .body-block {
+      position: absolute;
+      top: 184px; /* 48px (topbar) + 184px = 232px from top of viewport */
+      left: 0;
+      right: 0;
+      bottom: 60px;
+    }
+
+    /* Grid & Cards (DESIGN.md Style) */
+    .card-grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+
+    .card-grid-3 {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 20px;
+    }
+
+    .panel-card {
+      background: var(--canvas);
+      border: 1px solid var(--border-soft);
+      border-radius: 8px;
+      padding: 24px;
+      box-shadow: var(--shadow-panel);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .panel-card.highlight {
+      background: var(--canvas-muted);
+      border-color: var(--primary);
+      border-left: 4px solid var(--primary);
+    }
+
+    .panel-card.alert-card {
+      background: var(--danger-soft);
+      border-color: rgba(220, 38, 38, 0.3);
+      border-left: 4px solid var(--danger);
+    }
+
+    .panel-card.warning-card {
+      background: var(--warning-soft);
+      border-color: rgba(217, 119, 6, 0.3);
+      border-left: 4px solid var(--warning);
+    }
+
+    .card-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--ink);
+    }
+
+    .card-body {
+      font-size: 16px;
+      font-weight: 400;
+      color: var(--body);
+      line-height: 1.55;
+    }
+
+    /* Standard Table Component (DESIGN.md style) */
+    .edu-table {
+      width: 100%;
+      border-collapse: collapse;
+      border: 1px solid var(--border-soft);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    .edu-table th {
+      background: var(--canvas-muted);
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--ink);
+      padding: 14px 16px;
+      text-align: left;
+      border-bottom: 1px solid var(--border-soft);
+    }
+    .edu-table td {
+      font-size: 16px;
+      color: var(--body);
+      padding: 16px;
+      border-bottom: 1px solid var(--border-soft);
+      line-height: 1.5;
+    }
+
+    /* Fixed Bottom Footer (44px height) */
+    .slide-footer {
+      height: 52px;
+      padding: 0 var(--margin-x);
+      background: var(--canvas-muted);
+      border-top: 1px solid var(--border-soft);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .btn {
+      height: 36px;
+      padding: 0 16px;
+      font-size: 14px;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }
+
+    .btn-secondary {
+      background: var(--canvas);
+      color: var(--body);
+      border: 1px solid var(--border);
+    }
+    .btn-secondary:hover:not(:disabled) {
+      background: var(--canvas-subtle);
+      border-color: var(--muted);
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+      border: 1px solid var(--primary);
+    }
+    .btn-primary:hover:not(:disabled) {
+      background: var(--primary-hover);
+    }
+
+    .btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .help-hint {
+      font-size: 13px;
+      color: var(--muted);
+    }
+    kbd {
+      background: var(--canvas-subtle);
+      border: 1px solid var(--border);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="slide-viewport">
+    
+    <!-- Top Context Bar -->
+    <div class="slide-topbar">
+      <div class="location-badge" id="slideBadge">3D펜 여름 캠프</div>
+      <div class="counter-text" id="slideCounter">1 / 10</div>
+    </div>
+    <div class="progress-bar-track">
+      <div class="progress-bar-fill" id="progressBar"></div>
+    </div>
+
+    <!-- Main Content Area -->
+    <div class="slide-content-area">
+
+      <!-- Slide 1: Cover -->
+      <div class="slide-page active" data-badge="캠프 오리엔테이션">
+        <div class="title-block">
+          <h1 class="main-title">3D펜 여름 캠프: <span class="emphasis">안전 조종사 라이선스</span></h1>
+          <p class="subtitle">200℃ 고온형 PLA 3D펜으로 만나는 안전하고 창의적인 입체 조형</p>
+        </div>
+        <div class="body-block">
+          <div class="panel-card highlight">
+            <div class="card-title">🎯 오늘 우리의 목표</div>
+            <div class="card-body">
+              안전 수칙을 정확히 지키는 <strong>멋진 3D펜 안전 조종사</strong>가 되어, 상상하던 입체 여름 바다 작품을 직접 디자인하고 완성해 봅니다.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Slide 2: Safety 1 -->
+      <div class="slide-page" data-badge="안전 수칙 1">
+        <div class="title-block">
+          <h1 class="main-title">🔴 수칙 1: <span class="danger-emphasis">200℃ 노즐 화상 주의</span></h1>
+          <p class="subtitle">노즐과 막 나온 필라멘트는 매우 뜨거우므로 맨손 터치 금지</p>
+        </div>
+        <div class="body-block">
+          <div class="card-grid-2">
+            <div class="panel-card alert-card">
+              <div class="card-title">🔥 노즐 안전 지침</div>
+              <div class="card-body">
+                - 3D펜 금속 노즐 온도는 <strong>180~200℃</strong>입니다.<br>
+                - 노즐 부위나 막 녹아 나온 필라멘트를 손으로 만지지 않습니다.<br>
+                - 뜨거우면 즉시 <strong>"선생님!"</strong>을 부르고 시원한 물로 씻습니다.
+              </div>
+            </div>
+            <div class="panel-card">
+              <div class="card-title">✋ 왼손 안전 실리콘 골무 착용</div>
+              <div class="card-body">
+                - 작품을 잡는 왼손에는 반드시 <strong>안전 실리콘 골무/장갑</strong>을 착용합니다.<br>
+                - 나온 필라멘트는 <strong>3초간 식힌 후</strong> 손으로 집습니다.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Slide 3: Safety 2 -->
+      <div class="slide-page" data-badge="안전 수칙 2">
+        <div class="title-block">
+          <h1 class="main-title">☕ 수칙 2: <span class="emphasis">3D펜의 집은 머그컵!</span></h1>
+          <p class="subtitle">작업 중 손에서 펜을 놓을 때는 반드시 머그컵에 세워 보관</p>
+        </div>
+        <div class="body-block">
+          <div class="card-grid-2">
+            <div class="panel-card warning-card">
+              <div class="card-title">⚠️ 책상 바닥 방치 위험</div>
+              <div class="card-body">
+                만들기에 집중하다가 책상 바닥에 그냥 둔 뜨거운 펜촉에 <strong>자신의 팔이나 손이 데이는 사고</strong>가 자주 발생합니다.
+              </div>
+            </div>
+            <div class="panel-card highlight">
+              <div class="card-title">🏆 머그컵 거치 습관화</div>
+              <div class="card-body">
+                - 손에서 펜을 잠시 놓을 때<br>
+                - 필라멘트 색상을 바꿀 때<br>
+                👉 <strong>무조건 노즐이 아래를 향하도록 머그컵에 쏙!</strong> 꽂아둡니다.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Slide 4: Safety 3 -->
+      <div class="slide-page" data-badge="안전 수칙 3">
+        <div class="title-block">
+          <h1 class="main-title">🐢 수칙 3: <span class="danger-emphasis">퇴출 버튼 후 5초 대기</span></h1>
+          <p class="subtitle">필라멘트를 힘으로 강하게 잡아 뽑으면 내부 기어 고장 발생</p>
+        </div>
+        <div class="body-block">
+          <div class="card-grid-2">
+            <div class="panel-card alert-card">
+              <div class="card-title">💥 고장 원인 1위 주의</div>
+              <div class="card-body">
+                필라멘트 퇴출 시 펜이 미처 다 밀어내기 전에 <strong>억지로 당기면 내부 모터 기어가 파손</strong>됩니다.
+              </div>
+            </div>
+            <div class="panel-card highlight">
+              <div class="card-title">⏳ 5초 기다림 규칙</div>
+              <div class="card-body">
+                - [퇴출/빼기 버튼]을 누릅니다.<br>
+                - 펜이 '스르륵' 필라멘트를 밀어낼 때까지 <strong>5초간 기다립니다.</strong><br>
+                - 끝부분이 나오면 가볍게 집어 올립니다.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Slide 5: Safety 4 & 5 -->
+      <div class="slide-page" data-badge="안전 수칙 4 & 5">
+        <div class="title-block">
+          <h1 class="main-title">✂️ <span class="emphasis">일자 자르기</span> & ⏰ <span class="emphasis">30분 사용 5분 휴식</span></h1>
+          <p class="subtitle">기기 오작동 예방 및 올바른 환경 관리</p>
+        </div>
+        <div class="body-block">
+          <div class="card-grid-2">
+            <div class="panel-card">
+              <div class="card-title">✂️ 필라멘트 일자(一) 자르기</div>
+              <div class="card-body">
+                새 필라멘트를 넣기 전, 끝이 뭉툭하거나 찌그러지지 않도록 가위로 <strong>똑바로 일자로 잘라서</strong> 투입합니다.
+              </div>
+            </div>
+            <div class="panel-card">
+              <div class="card-title">⏰ 30분 작업 후 5분 휴식 & 환기</div>
+              <div class="card-body">
+                연속 사용 시 과열 멈춤이나 녹음 누출이 발생할 수 있습니다. 30분마다 머그컵에 쉬게 하고 창문을 열어 환기합니다.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Slide 6: Lesson 1 -->
+      <div class="slide-page" data-badge="1차시 안내">
+        <div class="title-block">
+          <h1 class="main-title">🟢 1차시: <span class="emphasis">기초 10분 마스터 & 여름 키링</span></h1>
+          <p class="subtitle">기초 선 긋기부터 나만의 악세서리 제작까지 빠른 체득</p>
+        </div>
+        <div class="body-block">
+          <table class="edu-table">
+            <thead>
+              <tr>
+                <th style="width: 25%;">단계</th>
+                <th style="width: 75%;">활동 내용</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>기초 연습 (10분)</strong></td>
+                <td>필라멘트 삽입 ➔ 직진 선 긋기 ➔ 지그재그 면 채우기 초고속 실습</td>
+              </tr>
+              <tr>
+                <td><strong>여름 키링 (25분)</strong></td>
+                <td>수박 조각, 튜브, 조개 도안 면 채우기 및 열쇠고리 연결</td>
+              </tr>
+              <tr>
+                <td><strong>심화 과제 (경험자)</strong></td>
+                <td>실제 착용 가능한 입체 썬글라스 안경 프레임 제작</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Slide 7: Lesson 2 -->
+      <div class="slide-page" data-badge="2차시 안내">
+        <div class="title-block">
+          <h1 class="main-title">🟡 2차시: <span class="emphasis">평면을 3D로! 조립 입체 부채</span></h1>
+          <p class="subtitle">2D 평면 조각을 접착하여 3차원 입체 구조물 완성</p>
+        </div>
+        <div class="body-block">
+          <div class="card-grid-2">
+            <div class="panel-card">
+              <div class="card-title">🎈 오전반 (3학년 중심)</div>
+              <div class="card-body">
+                <strong>[시원한 입체 여름 손부채]</strong><br>
+                부채 살 조각 + 손잡이 + 바다 장식 조각을 각각 만든 후 3D펜으로 연결하여 완성.
+              </div>
+            </div>
+            <div class="panel-card">
+              <div class="card-title">🏄 오후반 (5~6학년 중심)</div>
+              <div class="card-body">
+                <strong>[여름 서핑보드 & 야자수 조각]</strong><br>
+                공중 뼈대 세우기 기법을 활용하여 세밀한 3D 입체 야자수 및 서핑보드 제작.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Slide 8: Lesson 3 -->
+      <div class="slide-page" data-badge="3차시 안내">
+        <div class="title-block">
+          <h1 class="main-title">🔴 3차시: <span class="emphasis">여름 밤바다 3D 미니어처 무드등</span></h1>
+          <p class="subtitle">LED 촛불 조명과 결합하는 최종 종합 입체 작품</p>
+        </div>
+        <div class="body-block">
+          <div class="panel-card highlight">
+            <div class="card-title">✨ LED 무드등 연출</div>
+            <div class="card-body">
+              - LED 티라이트 주변을 감싸는 예쁜 바다 기둥 커버와 디오라마를 완성합니다.<br>
+              - 조명을 켜면 PLA 필라멘트를 투과하여 은은하고 아름다운 여름 밤바다 분위기가 연출됩니다.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Slide 9: End Rules -->
+      <div class="slide-page" data-badge="마무리 수칙">
+        <div class="title-block">
+          <h1 class="main-title">🏁 수업 마칠 때 <span class="danger-emphasis">3단계 정리 약속</span></h1>
+          <p class="subtitle">안전한 보관과 기기 관리를 위한 순서</p>
+        </div>
+        <div class="body-block">
+          <div class="panel-card alert-card">
+            <div class="card-body" style="font-size: 18px; line-height: 1.8;">
+              1️⃣ <strong>[필라멘트 쏙 빼기]</strong>: [퇴출 버튼]을 눌러 내부에 남은 필라멘트를 완전히 빼냅니다.<br>
+              2️⃣ <strong>[전원 코드 뽑기]</strong>: 어댑터 전원 선을 분리합니다.<br>
+              3️⃣ <strong>[머그컵에 식히기]</strong>: 뜨거운 펜이 완전히 식을 때까지 머그컵에 꽂아둡니다.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Slide 10: Conclusion -->
+      <div class="slide-page" data-badge="캠프 시작">
+        <div class="title-block" style="text-align: center; top: 80px;">
+          <h1 class="main-title" style="font-size: 48px;">안전하고 즐거운<br><span class="emphasis">3D펜 여름 캠프 시작!</span></h1>
+          <p class="subtitle">안전 수칙을 지키며 멋진 상상을 펼쳐보아요.</p>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Fixed Bottom Controls -->
+    <div class="slide-footer">
+      <button class="btn btn-secondary" id="prevBtn" onclick="changeSlide(-1)">◀ 이전</button>
+      <div class="help-hint">단축키: <kbd>←</kbd> <kbd>→</kbd> 또는 <kbd>Space</kbd></div>
+      <button class="btn btn-primary" id="nextBtn" onclick="changeSlide(1)">다음 ▶</button>
+    </div>
+
+  </div>
+
+  <script>
+    let currentSlide = 0;
+    const slides = document.querySelectorAll('.slide-page');
+    const progressBar = document.getElementById('progressBar');
+    const slideCounter = document.getElementById('slideCounter');
+    const slideBadge = document.getElementById('slideBadge');
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+
+    function updateSlide() {
+      slides.forEach((slide, index) => {
+        if (index === currentSlide) {
+          slide.classList.add('active');
+        } else {
+          slide.classList.remove('active');
+        }
+      });
+
+      const progress = ((currentSlide + 1) / slides.length) * 100;
+      progressBar.style.width = progress + '%';
+      slideCounter.innerText = `${currentSlide + 1} / ${slides.length}`;
+      slideBadge.innerText = slides[currentSlide].getAttribute('data-badge') || '3D펜 여름 캠프';
+
+      prevBtn.disabled = (currentSlide === 0);
+      nextBtn.disabled = (currentSlide === slides.length - 1);
+    }
+
+    function changeSlide(direction) {
+      if (direction === 1 && currentSlide < slides.length - 1) {
+        currentSlide++;
+      } else if (direction === -1 && currentSlide > 0) {
+        currentSlide--;
+      }
+      updateSlide();
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === ' ') {
+        changeSlide(1);
+      } else if (e.key === 'ArrowLeft') {
+        changeSlide(-1);
+      }
+    });
+
+    updateSlide();
+  </script>
+</body>
+</html>
