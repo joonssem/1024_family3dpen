@@ -10,5 +10,6 @@ export const metadata: Metadata = {
 export const viewport: Viewport = { width: "device-width", initialScale: 1, themeColor: "#f5f3ec" };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="ko"><body>{children}</body></html>;
+  // HWP 같은 브라우저 확장이 추가하는 html 속성 차이는 루트에서만 허용합니다.
+  return <html lang="ko" suppressHydrationWarning><body>{children}</body></html>;
 }
