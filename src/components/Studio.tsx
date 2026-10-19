@@ -3,8 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import { camp } from "@/lib/camp";
 import { fallbackIdeas, ideasSchema, type Idea } from "@/lib/ideas";
+import RecordShare from "./RecordShare";
 
-type Part = { name: string; shape: string; owner: string; done: boolean };
+type Part = { name: string; shape: string; owner: "함께" | "학생" | "보호자"; done: boolean };
 const blankParts = (): Part[] => Array.from({ length: 3 }, () => ({ name: "", shape: "", owner: "함께", done: false }));
 const formatTime = (seconds: number) => `${Math.floor(seconds / 60).toString().padStart(2, "0")}:${(seconds % 60).toString().padStart(2, "0")}`;
 
@@ -81,6 +82,15 @@ export default function Studio() {
     window.setTimeout(() => { titleRef.current?.focus(); window.scrollTo({ top: 0, behavior: "smooth" }); }, 0);
   }
 
+  function toggleTeacher() {
+    if (teacher && (step === 4 || step === 5) && !allSafe) {
+      setNotice("펜을 쓰기 전에 보호자와 안전 약속 6가지를 확인해 주세요.");
+      setStep(3); setRunning(false); setSeconds(camp.steps[3].minutes * 60); setBuildPhase(0);
+      window.setTimeout(() => { titleRef.current?.focus(); window.scrollTo({ top: 0, behavior: "smooth" }); }, 0);
+    }
+    setTeacher(value => !value);
+  }
+
   async function ask(mode = "initial") {
     if (busy || cooldown) return;
     if (!problem.trim()) { setNotice("먼저 함께 발견한 불편을 한 가지 적어 주세요."); return; }
@@ -94,6 +104,12 @@ export default function Studio() {
         body: JSON.stringify({ problem: problem.trim(), mode, previous: ideas }), signal: controller.signal,
       });
       const data = await response.json();
+      if (number !== requestNumber.current) return;
+      if (response.status >= 400 && response.status < 500) {
+        setNotice(typeof data.error === "string" ? data.error : "입력을 확인하고 다시 요청해 주세요.");
+        setSource(""); setCooldown(0);
+        return;
+      }
       if (!response.ok) throw new Error("unavailable");
       const parsed = ideasSchema.parse(data);
       if (number !== requestNumber.current) return;
@@ -118,7 +134,7 @@ export default function Studio() {
   }
   function choose(idea: Idea) {
     setSelected(idea.name); setInvention(idea.name);
-    setParts([...idea.parts.map(part => ({ name: part.name, shape: part.shape, owner: "함께", done: false })), ...blankParts()].slice(0, 3));
+    setParts([...idea.parts.map(part => ({ name: part.name, shape: part.shape, owner: "함께" as const, done: false })), ...blankParts()].slice(0, 3));
     setAssembly(idea.assembly);
   }
   function updatePart(index: number, key: keyof Part, value: string | boolean) {
@@ -137,7 +153,7 @@ export default function Studio() {
     <header className="site-header">
       <button className="brand" onClick={() => go(0)} aria-label="가족 발명소 처음 화면"><span className="brand-mark" aria-hidden="true"><i /><i /><i /><i /></span><span>{camp.title}<small>FAMILY INVENTION STUDIO</small></span></button>
       <div className="header-meta"><span>{camp.date}</span><span>{camp.place}</span></div>
-      <button className={`mode-button ${teacher ? "active" : ""}`} onClick={() => setTeacher(value => !value)} aria-pressed={teacher}>{teacher ? "가족 화면으로" : "교사 큰 화면"}<span aria-hidden="true">↗</span></button>
+      <button className={`mode-button ${teacher ? "active" : ""}`} onClick={toggleTeacher} aria-pressed={teacher}>{teacher ? "가족 화면으로" : "교사 큰 화면"}<span aria-hidden="true">↗</span></button>
     </header>
 
     <div className="app-layout">
@@ -179,6 +195,7 @@ export default function Studio() {
             {field("우리가 만들 발명품 이름", invention, setInvention, "아이가 정한 이름을 적어요", 40)}
             <details className="idea-drawer"><summary>함께 막혔나요? 아이디어 힌트 펼치기 <span aria-hidden="true">+</span></summary><div className="drawer-content"><p>아이의 생각을 먼저 들어 보셨나요? AI 답은 힌트예요. 우리 생각에 맞게 바꿔 주세요.</p>
               {field("힌트를 얻고 싶은 불편", problem, setProblem, "불편 한 가지만 적어요", 50)}
+              <p className="quiet-note">AI를 요청하면 적은 불편과 이전 힌트가 Upstage Solar로 전송돼요. 이름·연락처는 적지 마세요. 준비된 힌트는 AI 요청 없이 볼 수 있어요.</p>
               <div className="button-row"><button className="primary-button" onClick={() => ask()} disabled={busy || cooldown > 0}>{busy ? "힌트를 생각하고 있어요…" : cooldown ? `${cooldown}초 후 다시 요청` : "아이디어 카드 3장 보기"}<span aria-hidden="true">↗</span></button><button className="secondary-button" onClick={prepared}>준비된 힌트 바로 보기</button></div>
               <p className="source-note" role="status" aria-live="polite">{busy ? "15초 안에 연결되지 않으면 예비 힌트를 보여드려요." : source}</p>
               {!!ideas.length && <><div className="idea-grid">{ideas.map((idea, index) => <article className={`idea-card ${selected === idea.name ? "selected" : ""}`} key={`${idea.name}-${index}`}><span className="eyebrow">IDEA {String(index + 1).padStart(2, "0")} · {idea.parts.length}조각</span><h3>{idea.name}</h3><p>{idea.problem}</p><h4>필요한 조각</h4><ul>{idea.parts.map((part, i) => <li key={i}>{part.name} — {part.shape}</li>)}</ul><h4>이어 붙이는 방법</h4><p>{idea.assembly}</p><button className="secondary-button" onClick={() => choose(idea)} aria-pressed={selected === idea.name}>{selected === idea.name ? "선택한 힌트 ✓" : "이 힌트를 바꿔 볼래요"}</button></article>)}</div><div className="retry-buttons">{[["simpler", "더 간단하게"], ["two", "부품 2개로"], ["different", "다른 아이디어"]].map(([mode, label]) => <button disabled={busy || cooldown > 0} key={mode} onClick={() => ask(mode)}>{label} ↗</button>)}</div></>}
@@ -199,14 +216,21 @@ export default function Studio() {
 
           {step === 6 && <><div className="presentation-card"><span className="eyebrow">우리 가족의 90초</span><h2>우리 발명품은<br /><em>{invention || "____________"}</em>이에요.</h2><p><strong>{problem || "____________"}</strong> 불편을 바꾸고 싶었어요.</p><p>우리는 <strong>{change || firstIdea || "____________"}</strong> 생각을 더했어요.</p></div><div className="role-grid two"><article><span className="eyebrow">학생이 먼저</span><h3>내가 결정한 것을 말해요.</h3><p>“내가 가장 마음에 드는 부분은…”<br />“다음에 바꾸고 싶은 부분은…”</p></article><article><span className="eyebrow">보호자가 한마디</span><h3>함께한 순간을 보태요.</h3><p>“아이가 이런 생각을 해서 놀랐어요.”<br />“이 질문을 나누면서 재미있었어요.”</p></article></div><p className="quiet-note">친구의 발표를 듣고, 잘한 점을 하나씩 찾아요. 미완성 작품도 도전한 이야기가 있어요.</p></>}
 
-          {step === 7 && <>{field("학생의 한마디", childMemory, setChildMemory, "보호자와 함께해서 가장 좋았던 순간은?")}{field("보호자의 한마디", parentMemory, setParentMemory, "오늘 새롭게 발견한 아이의 모습은?")}<div className="finish-note"><span className="eyebrow">OUR BEST INVENTION</span><h2>함께 이야기하고,<br />함께 해낸 오늘.</h2><p>{camp.promise}</p></div><div className="cleanup-list"><h3>추억을 챙기고, 안전하게 마무리해요.</h3>{["선생님 안내에 따라 필라멘트를 정리했어요", "전원을 분리하고 지정된 곳에서 펜을 식혀요", "작품과 활동지를 챙겼어요"].map((label, index) => <label key={label}><input type="checkbox" checked={cleanup[index]} onChange={event => setCleanup(items => items.map((value, i) => i === index ? event.target.checked : value))} />{label}</label>)}</div><div className="button-row"><button className="primary-button" onClick={() => window.print()}>우리 가족 기록 인쇄 / PDF <span aria-hidden="true">↗</span></button><button className="secondary-button" onClick={() => setResetOpen(true)}>새 가족으로 시작</button></div><p className="quiet-note">입력은 현재 화면의 메모리에만 있어요. 새로고침하거나 닫으면 사라져요. 사진·이름은 수집하지 않아요.</p></>}
+          {step === 7 && <>
+            {field("학생의 한마디", childMemory, setChildMemory, "보호자와 함께해서 가장 좋았던 순간은?")}
+            {field("보호자의 한마디", parentMemory, setParentMemory, "오늘 새롭게 발견한 아이의 모습은?")}
+            <div className="finish-note"><span className="eyebrow">OUR BEST INVENTION</span><h2>함께 이야기하고,<br />함께 해낸 오늘.</h2><p>{camp.promise}</p></div>
+            <div className="cleanup-list"><h3>추억을 챙기고, 안전하게 마무리해요.</h3>{["선생님 안내에 따라 필라멘트를 정리했어요", "전원을 분리하고 지정된 곳에서 펜을 식혀요", "작품과 활동지를 챙겼어요"].map((label, index) => <label key={label}><input type="checkbox" checked={cleanup[index]} onChange={event => setCleanup(items => items.map((value, i) => i === index ? event.target.checked : value))} />{label}</label>)}</div>
+            <RecordShare record={{ version: 1, title: camp.title, date: camp.date, place: camp.place, promise: camp.promise, problem, firstIdea, invention, change, selected, assembly, childMemory, parentMemory, parts }} />
+            <div className="button-row"><button className="secondary-button" onClick={() => setResetOpen(true)}>새 가족으로 시작</button></div>
+            <p className="quiet-note">입력은 현재 화면의 메모리에만 있어요. 새로고침하거나 닫기 전에 QR로 기록 이미지를 가져가세요. 사진·이름은 수집하지 않아요.</p>
+          </>}
         </div>
 
         {step > 0 && <div className="stage-footer"><button className="text-button" onClick={() => go(step - 1)}>← 이전 단계</button><div className="timer"><span className="eyebrow">대화와 활동 시간</span><output aria-label="남은 활동 시간">{formatTime(seconds)}</output><button onClick={() => setRunning(value => !value)} aria-label={running ? "타이머 멈추기" : "타이머 시작"}>{running ? "멈춤" : seconds === 0 ? "완료" : "시작"}</button><button onClick={() => { setRunning(false); setSeconds((step === 5 ? buildPhase ? 23 : 25 : current.minutes) * 60); }} aria-label="타이머 초기화">↺</button>{seconds === 0 && <span role="status">함께 마무리해요</span>}</div>{step < 7 ? <button className="primary-button" onClick={() => go(step + 1)}>{camp.steps[step + 1].label}<span aria-hidden="true">→</span></button> : <span className="end-label">수고했어요, 발명가 가족! ↗</span>}</div>}
         <footer className="page-footer"><span>FAMILY INVENTION STUDIO</span><span>정답보다 대화, 완성보다 함께.</span></footer>
       </main>
     </div>
-    {resetOpen && <div className="dialog-backdrop"><section role="dialog" aria-modal="true" aria-labelledby="reset-title" className="reset-dialog"><h2 id="reset-title">새 가족으로 시작할까요?</h2><p>지금 적은 기록과 안전 확인이 모두 지워져요. 필요하면 먼저 인쇄해 주세요.</p><div className="button-row"><button autoFocus className="secondary-button" onClick={() => setResetOpen(false)}>계속 기록하기</button><button className="primary-button" onClick={reset}>지우고 시작</button></div></section></div>}
-    <section className="print-record"><h1>{camp.title} · 우리 가족 기록</h1><p>{camp.date} / {camp.place}</p><h2>발견한 불편</h2><p>{problem || "종이 활동지에 기록했어요."}</p><h2>아이의 첫 생각</h2><p>{firstIdea || "함께 이야기했어요."}</p><h2>우리 발명품 · {invention || "이름을 붙여 주세요"}</h2><p>우리가 더한 생각: {change || "________________"}</p>{selected && <p>참고한 힌트: {selected}</p>}<h2>함께 만든 조각</h2>{parts.filter(part => part.name).map((part, index) => <p key={index}>{index + 1}. {part.name} / {part.shape} / {part.owner} / {part.done ? "완성" : "도전 중"}</p>)}<p>조립 순서: {assembly || "________________"}</p><h2>오늘의 한마디</h2><p>학생: {childMemory || "________________"}</p><p>보호자: {parentMemory || "________________"}</p><footer>{camp.promise}</footer></section>
+    {resetOpen && <div className="dialog-backdrop"><section role="dialog" aria-modal="true" aria-labelledby="reset-title" className="reset-dialog"><h2 id="reset-title">새 가족으로 시작할까요?</h2><p>지금 적은 기록과 안전 확인이 모두 지워져요. 먼저 보호자 스마트폰에 기록 이미지를 저장했는지 확인해 주세요.</p><div className="button-row"><button autoFocus className="secondary-button" onClick={() => setResetOpen(false)}>계속 기록하기</button><button className="primary-button" onClick={reset}>지우고 시작</button></div></section></div>}
   </div>;
 }
