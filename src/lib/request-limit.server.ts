@@ -25,8 +25,10 @@ export async function reserveRequest(signal: AbortSignal): Promise<boolean> {
   const now = Date.now();
   const minute = Math.floor(now / 60000);
   const day = Math.floor((now + 9 * 3600000) / 86400000); // 한국 표준시 기준 날짜
-  const url = process.env.UPSTASH_REDIS_REST_URL;
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  // Vercel의 Upstash 연동은 KV_REST_API_* 이름으로 연결 정보를 등록합니다.
+  const nativeCredentials = Boolean(process.env.UPSTASH_REDIS_REST_URL || process.env.UPSTASH_REDIS_REST_TOKEN);
+  const url = nativeCredentials ? process.env.UPSTASH_REDIS_REST_URL : process.env.KV_REST_API_URL;
+  const token = nativeCredentials ? process.env.UPSTASH_REDIS_REST_TOKEN : process.env.KV_REST_API_TOKEN;
   if (url && token) {
     const endpoint = new URL(url);
     if (endpoint.protocol !== "https:" || !endpoint.hostname.endsWith(".upstash.io") || endpoint.username || endpoint.password || endpoint.search || endpoint.pathname !== "/") throw new Error("limit-config");

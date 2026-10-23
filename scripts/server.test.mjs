@@ -188,6 +188,7 @@ test("daily local quota survives minute rollover and resets at Korean midnight",
 for (const [label, config] of [
   ["missing production counter", { ...active, NODE_ENV: "production" }],
   ["incomplete counter credentials", { ...active, UPSTASH_REDIS_REST_URL: shared.UPSTASH_REDIS_REST_URL }],
+  ["incomplete Vercel counter credentials", { ...active, KV_REST_API_URL: shared.UPSTASH_REDIS_REST_URL }],
   ["invalid local quota", { ...active, SOLAR_MAX_REQUESTS_PER_MINUTE: "0" }],
   ["invalid counter host", { ...shared, UPSTASH_REDIS_REST_URL: "https://other.example" }],
   ["invalid counter scope", { ...shared, SOLAR_BUDGET_SCOPE: "invalid scope" }],
@@ -221,4 +222,16 @@ test("shared quota is reserved atomically and sends no family input", async () =
   assert.ok(counter[4].includes("{family-2026-10-24}:day:"));
   assert.ok(!app.calls[0].body.includes(problem));
   assert.ok(!app.calls[0].body.includes(active.SOLAR_API_KEY));
+});
+
+test("Vercel Upstash credentials reserve production quota before calling Solar", async () => {
+  const env = {
+    ...active, NODE_ENV: "production", KV_REST_API_URL: shared.UPSTASH_REDIS_REST_URL,
+    KV_REST_API_TOKEN: "test-vercel-placeholder",
+  };
+  const app = harness(env, url => url === env.KV_REST_API_URL + "/" ? Response.json({ result: 1 }) : completion());
+  assert.equal((await app.post()).data.source, "ai");
+  assert.equal(app.calls.length, 2);
+  assert.equal(app.calls[0].headers.Authorization, `Bearer ${env.KV_REST_API_TOKEN}`);
+  assert.equal(JSON.parse(app.calls[0].body)[0], "EVAL");
 });
