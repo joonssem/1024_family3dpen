@@ -54,6 +54,7 @@ test("empty optional entries can be shared without inventing a family name", () 
   record.parts = [];
   assert.equal(decodeRecord(encodeRecord(record)).invention, "");
   assert.ok(recordSections(record).every(section => section.body.length > 0));
+  assert.ok(recordSections(record).every(section => !/학생의 한마디|보호자의 한마디/.test(section.title)));
 });
 
 for (const token of ["", "v2.test", "#v1.invalid!", "v1.a", "v1." + "a".repeat(5001)]) {

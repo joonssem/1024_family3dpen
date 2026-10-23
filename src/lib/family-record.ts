@@ -55,7 +55,7 @@ export function recordSections(record: FamilyRecord): { title: string; body: str
       `${index + 1}. ${part.name || "이름 없는 조각"} · ${part.shape || "자유로운 모양"}\n${part.owner} · ${part.done ? "완성" : "도전 중"}`,
     ).join("\n\n") || "함께 그리고 만들었어요." },
     { title: "06 / 우리의 조립 순서", body: record.assembly || "서로 도우며 이어 붙였어요." },
-    { title: "07 / 학생의 한마디", body: record.childMemory || "함께해서 즐거웠어요." },
-    { title: "08 / 보호자의 한마디", body: record.parentMemory || "함께한 오늘을 기억할게요." },
+    ...(record.childMemory ? [{ title: "07 / 학생의 한마디", body: record.childMemory }] : []),
+    ...(record.parentMemory ? [{ title: "08 / 보호자의 한마디", body: record.parentMemory }] : []),
   ];
 }

@@ -18,6 +18,8 @@ const instructions = `한국어로만 답하세요.
 불편이 짧거나 뜻이 여러 가지일 때도 무관한 발명품을 만들지 말고, 입력에 나온 대상과 행동을 기준으로 만들기 쉬운 서로 다른 보조 도구를 제안하세요.
 각 아이디어는 30분 안에 시도할 수 있는 손바닥 크기(가로·세로·높이 각각 10cm 이내) 모형입니다.
 평면 조각을 그리고 식힌 뒤 세우고 붙이는 방식으로 만들 수 있어야 합니다.
+식힌 조각을 말기·구부리기·접기·재가열하기는 제안하지 마세요. 둥근 물체도 평평한 옆모습 두 장을 교차해 붙이는 단순한 입체 표현으로 바꾸세요. 실제 필요한 같은 조각 두 장을 한 항목에 숨기지 마세요. 조립 순서에는 무엇을 바닥에 놓고 어느 조각의 어느 변을 붙이는지 구체적으로 설명하세요.
+사용자가 만들고 싶은 장식이나 모형을 물으면 그 모양을 만드는 쉬운 방법을 제안하세요. 없는 생활 속 불편을 만들어 내지 마세요.
 parts 배열의 한 항목은 실제 평면 조각 딱 한 개입니다. 같은 벽 두 장은 별도 항목 두 개입니다.
 실제 조각은 총 3개 이내입니다. 별도 접착제·자석·나사·기계 장치 없이 3D펜으로 조립합니다.
 위험한 물건, 전기 회로, 불·칼 관련 물건, 식품 용기, 무거운 물건을 지탱하는 구조는 제외합니다.
@@ -42,6 +44,7 @@ function validateForClass(ideas: Idea[], mode: IdeaMode, previous: Idea[]) {
     if (mode === "different" && previous.some(old => old.name === idea.name)) throw new Error("repeat");
     const content = JSON.stringify(idea);
     if (/칼날|라이터|촛불|전기\s*회로|콘센트|식품\s*용기|음식\s*용기|그릇|접시/.test(content)) throw new Error("unsafe");
+    if (/(?:말아서|동그랗게\s*말|동글게\s*말|구부려|접어서|재가열)|(?:조각|판|띠)[^.!?\n]{0,20}말아/.test(idea.assembly)) throw new Error("unsupported-method");
     for (const part of idea.parts) {
       if (/(?:[2-9]|\d{2,})\s*(?:개|장)|(?:두|세|네|다섯)\s*(?:개|장)/.test(`${part.name} ${part.shape}`)) throw new Error("piece-count");
       for (const dimension of part.shape.matchAll(/(\d+(?:\.\d+)?)\s*(cm|mm|센티미터|밀리미터)/gi)) {

@@ -64,7 +64,7 @@ export async function POST(request: Request) {
   } catch (error) {
     const code = error instanceof Error ? error.message : "";
     // 정해진 오류 코드만 기록합니다. 키·사용자 입력·외부 응답 본문은 기록하지 않습니다.
-    const diagnostic = /^(?:provider-\d{3}|limit-config|limit-unavailable|shared-limit-required|empty|large|incomplete|invalid-json|invalid-schema|duplicate|parts|repeat|unsafe|piece-count|size)$/.test(code) ? code : "request-failed";
+    const diagnostic = /^(?:provider-\d{3}|limit-config|limit-unavailable|shared-limit-required|empty|large|incomplete|invalid-json|invalid-schema|duplicate|parts|repeat|unsafe|piece-count|size|unsupported-method)$/.test(code) ? code : "request-failed";
     console.warn("Solar request unavailable:", diagnostic);
     return prepared("unavailable");
   }

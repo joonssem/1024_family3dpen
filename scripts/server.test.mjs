@@ -154,6 +154,8 @@ for (const [label, reply, mode = "initial", previous = []] of [
   ["four pieces", () => { const ideas = validIdeas(); ideas[0].parts = Array(4).fill(ideas[0].parts[0]); return completion(ideas); }],
   ["hidden multiple pieces", () => { const ideas = validIdeas(); ideas[0].parts[0].shape = "6cm 벽 두 장"; return completion(ideas); }],
   ["unsafe food container", () => { const ideas = validIdeas(); ideas[0].name = "음식 그릇"; return completion(ideas); }],
+  ["rolling a cooled piece", () => { const ideas = validIdeas(); ideas[0].assembly = "얼굴 조각을 세로 기둥으로 말아 바닥에 붙여요."; return completion(ideas); }],
+  ["bending a cooled piece", () => { const ideas = validIdeas(); ideas[0].assembly = "식힌 판을 구부려 붙여요."; return completion(ideas); }],
   ["oversized centimeters", () => { const ideas = validIdeas(); ideas[0].parts[0].shape = "11cm 네모 한 장"; return completion(ideas); }],
   ["oversized millimeters", () => { const ideas = validIdeas(); ideas[0].parts[0].shape = "101mm 네모 한 장"; return completion(ideas); }],
   ["two-piece mode violation", () => { const ideas = validIdeas(); ideas[0].parts = Array(3).fill(ideas[0].parts[0]); return completion(ideas); }, "two"],

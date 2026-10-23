@@ -4,11 +4,13 @@ import { useEffect, useRef, useState } from "react";
 import { camp } from "@/lib/camp";
 import { fallbackIdeas, ideasSchema, type Idea } from "@/lib/ideas";
 import RecordShare from "./RecordShare";
-import QRCode from "qrcode";
+import SiteAccess from "./SiteAccess";
 
 type Part = { name: string; shape: string; owner: "함께" | "학생" | "보호자"; done: boolean };
 const blankParts = (): Part[] => Array.from({ length: 3 }, () => ({ name: "", shape: "", owner: "함께", done: false }));
 const formatTime = (seconds: number) => `${Math.floor(seconds / 60).toString().padStart(2, "0")}:${(seconds % 60).toString().padStart(2, "0")}`;
+const initialSeconds = (step: number, phase: number) => (step === 5 ? phase ? 23 : 25 : camp.steps[step].minutes) * 60;
+type Plan = { invention: string; selected: string; parts: Part[]; assembly: string };
 
 function Geometry({ small = false }: { small?: boolean }) {
   return <svg className={small ? "geometry small" : "geometry"} viewBox="0 0 440 390" aria-hidden="true">
@@ -52,7 +54,11 @@ export default function Studio() {
   const [showSchedule, setShowSchedule] = useState(false);
   const [resetOpen, setResetOpen] = useState(false);
   const [notice, setNotice] = useState("");
-  const [siteQr, setSiteQr] = useState("");
+  const [digitalRecord, setDigitalRecord] = useState(false);
+  const [pendingIdea, setPendingIdea] = useState<Idea | null>(null);
+  const [previousPlan, setPreviousPlan] = useState<Plan | null>(null);
+  const planDialogRef = useRef<HTMLDialogElement>(null);
+  const timerValues = useRef<Record<string, number>>({});
   const titleRef = useRef<HTMLHeadingElement>(null);
   const requestRef = useRef<AbortController | null>(null);
   const requestNumber = useRef(0);
@@ -73,13 +79,7 @@ export default function Studio() {
     return () => window.clearTimeout(id);
   }, [cooldown]);
   useEffect(() => () => requestRef.current?.abort(), []);
-  useEffect(() => {
-    let active = true;
-    QRCode.toDataURL("https://project-c9pas.vercel.app/", { width: 160, margin: 1, errorCorrectionLevel: "M" })
-      .then(url => { if (active) setSiteQr(url); })
-      .catch(() => undefined);
-    return () => { active = false; };
-  }, []);
+  useEffect(() => { if (pendingIdea) planDialogRef.current?.showModal(); }, [pendingIdea]);
 
   function go(index: number) {
     if (index < 0 || index >= camp.steps.length) return;
@@ -87,8 +87,18 @@ export default function Studio() {
       setNotice("펜을 쓰기 전에 보호자와 안전 약속 6가지를 확인해 주세요.");
       index = 3;
     } else { setNotice(""); }
-    setStep(index); setRunning(false); setSeconds(camp.steps[index].minutes * 60); setBuildPhase(0);
+    if (index === step) return;
+    timerValues.current[`${step}:${step === 5 ? buildPhase : 0}`] = seconds;
+    setStep(index); setRunning(false);
+    setSeconds(timerValues.current[`${index}:${index === 5 ? buildPhase : 0}`] ?? initialSeconds(index, buildPhase));
     window.setTimeout(() => { titleRef.current?.focus(); window.scrollTo({ top: 0, behavior: "smooth" }); }, 0);
+  }
+
+  function switchBuildPhase(index: number) {
+    if (index === buildPhase) return;
+    timerValues.current[`5:${buildPhase}`] = seconds;
+    setBuildPhase(index); setRunning(false);
+    setSeconds(timerValues.current[`5:${index}`] ?? initialSeconds(5, index));
   }
 
   function toggleTeacher() {
@@ -123,14 +133,14 @@ export default function Studio() {
       const parsed = ideasSchema.parse(data);
       if (number !== requestNumber.current) return;
       const preparedMessages: Record<string, string> = {
-        limited: "AI 요청이 많아 준비된 예비 힌트를 보여드려요. 함께 이야기하며 바꿔 봐요.",
-        expired: "오늘의 AI 이용 시간이 끝났어요. 준비된 힌트로 계속할 수 있어요.",
-        unavailable: "AI 연결이 어려워 준비된 예비 힌트를 보여드려요.",
+        limited: "AI 요청 한도에 도달했어요. 아래는 미리 준비한 예시이며, 방금 질문에 대한 AI 답변이 아니에요.",
+        expired: "오늘의 AI 이용 시간이 끝났어요. 아래는 미리 준비한 예시이며, 방금 질문에 대한 AI 답변이 아니에요.",
+        unavailable: "AI 응답을 받지 못했어요. 아래는 미리 준비한 예시이며, 방금 질문에 대한 AI 답변이 아니에요.",
       };
-      setIdeas(parsed.ideas); setSource(data.source === "ai" ? "AI가 제안한 힌트예요. 만들 수 있을지 함께 살펴봐요." : preparedMessages[data.reason] || "준비해 둔 예비 힌트예요. 우리 불편에 맞게 바꿔 봐요.");
+      setIdeas(parsed.ideas); setSource(data.source === "ai" ? "AI가 제안한 힌트예요. 만들기 전에 선생님과 조각·붙일 위치를 확인해요." : preparedMessages[data.reason] || "미리 준비한 예시 · 방금 질문에 대한 AI 답변이 아니에요.");
     } catch {
       if (number !== requestNumber.current) return;
-      setIdeas(fallbackIdeas(problem, mode, ideas.map(idea => idea.name))); setSource("AI 연결이 어려워 준비된 예비 힌트를 보여드려요.");
+      setIdeas(fallbackIdeas(problem, mode, ideas.map(idea => idea.name))); setSource("AI 응답을 받지 못했어요. 아래는 미리 준비한 예시이며, 방금 질문에 대한 AI 답변이 아니에요.");
     } finally {
       window.clearTimeout(timeout);
       if (number === requestNumber.current) setBusy(false);
@@ -139,12 +149,23 @@ export default function Studio() {
 
   function prepared() {
     ++requestNumber.current; requestRef.current?.abort(); setBusy(false);
-    setIdeas(fallbackIdeas(problem)); setSource("준비된 예비 힌트 · 실제 제작 가능성은 선생님과 확인해요.");
+    setIdeas(fallbackIdeas(problem)); setSource("미리 준비한 예시 · 방금 질문에 대한 AI 답변이 아니에요. 우리 생각에 맞게 바꿔 봐요.");
   }
   function choose(idea: Idea) {
+    setPreviousPlan({ invention, selected, parts, assembly });
+    setPendingIdea(null);
     setSelected(idea.name); setInvention(idea.name);
     setParts([...idea.parts.map(part => ({ name: part.name, shape: part.shape, owner: "함께" as const, done: false })), ...blankParts()].slice(0, 3));
     setAssembly(idea.assembly);
+  }
+  function requestChoose(idea: Idea) {
+    if (invention.trim() || assembly.trim() || parts.some(part => part.name || part.shape)) setPendingIdea(idea);
+    else choose(idea);
+  }
+  function undoPlan() {
+    if (!previousPlan) return;
+    setInvention(previousPlan.invention); setSelected(previousPlan.selected);
+    setParts(previousPlan.parts); setAssembly(previousPlan.assembly); setPreviousPlan(null);
   }
   function updatePart(index: number, key: keyof Part, value: string | boolean) {
     setParts(items => items.map((part, i) => i === index ? { ...part, [key]: value } : part));
@@ -153,7 +174,9 @@ export default function Studio() {
     ++requestNumber.current; requestRef.current?.abort(); setBusy(false); setCooldown(0);
     setProblem(""); setFirstIdea(""); setInvention(""); setChange(""); setQuestion(0); setIdeas([]); setSource(""); setSelected("");
     setSafety(Array(6).fill(false)); setParts(blankParts()); setAssembly(""); setChildMemory(""); setParentMemory(""); setCleanup(Array(3).fill(false));
-    setResetOpen(false); go(0);
+    setResetOpen(false); setPendingIdea(null); setPreviousPlan(null); setDigitalRecord(false);
+    timerValues.current = {}; setBuildPhase(0); setStep(0); setSeconds(initialSeconds(0, 0)); setRunning(false); setNotice("");
+    window.setTimeout(() => { titleRef.current?.focus(); window.scrollTo({ top: 0, behavior: "smooth" }); }, 0);
   }
 
   const field = (label: string, value: string, setter: (value: string) => void, placeholder: string, max = 140) => <label className="field"><span>{label}</span><textarea maxLength={max} rows={2} value={value} onChange={event => setter(event.target.value)} placeholder={placeholder} /><small>{value.length}/{max} · 이름·연락처는 적지 않아요</small></label>;
@@ -176,19 +199,21 @@ export default function Studio() {
 
       <main className="main-content" id="main-content">
         <div className="section-meta"><span><span className="status-dot" /> {teacher ? "TEACHER’S GUIDE" : "FAMILY WORKSHOP"}</span><span>{current.time} <span className="meta-divider">/</span> {String(step + 1).padStart(2, "0")} — 08</span></div>
+        {teacher && step === 0 && <SiteAccess />}
         <section className={`stage-head ${step === 0 ? "welcome-head" : ""}`}>
           <div><p className="eyebrow accent">{current.english}</p><h1 ref={titleRef} tabIndex={-1}>{current.title}</h1><p className="stage-description">{current.description}</p></div>
           {step === 0 ? <div className="hero-art"><div className="art-caption"><span>작은 생각이 입체가 되는 시간</span><span>FIG. 01</span></div><Geometry /><p>서로 다른 모양이 만나, 하나의 발명이 됩니다.</p></div> : <div className="stage-index" aria-hidden="true">{String(step + 1).padStart(2, "0")}<span>/{String(camp.steps.length).padStart(2, "0")}</span></div>}
         </section>
 
         {notice && <p className="notice" role="status">{notice}</p>}
-        {teacher && <section className="teacher-note"><span className="eyebrow">교사 진행 메모</span><p>{camp.teacherNotes[step]}</p><small>각 iPad는 가족이 직접 단계를 넘깁니다. 이 화면과 원격으로 동기화되지 않습니다.</small>{step === 0 && <div className="site-qr" style={{ display: "flex", alignItems: "center", gap: 16, marginTop: 14 }}><div style={{ display: "grid", justifyItems: "center", gap: 4, fontSize: 12 }}>{siteQr && <img src={siteQr} width="120" height="120" alt="가족 발명소 웹사이트 QR 코드" />}<span>가족 화면을 열어 주세요</span></div><p>아이패드 카메라로 스캔해<br />가족 발명소에 접속해요.</p></div>}</section>}
+        {teacher && <section className="teacher-note"><span className="eyebrow">교사 진행 메모</span><p>{camp.teacherNotes[step]}</p><small>각 iPad는 가족이 직접 단계를 넘깁니다. 이 화면과 원격으로 동기화되지 않습니다.</small></section>}
+        {!teacher && <p className="quiet-note">다음 단계는 선생님 안내에 맞춰 눌러요. 생각과 그림은 종이 학습지에 남겨요.</p>}
 
         <div className="stage-body">
           {step === 0 && <>
             <div className="mission-strip"><span className="eyebrow">OUR MISSION</span><div><h2>{camp.mission}</h2><p>{camp.promise}</p></div><span className="mission-arrow" aria-hidden="true">↗</span></div>
             <div className="role-grid"><article><span className="eyebrow">01 / 어린이 발명가</span><h3>내 생각을 말해요.</h3><p>불편을 찾고, 무엇을 만들지 정해요.<br />완벽하지 않아도 내 생각이면 좋아요.</p></article><article><span className="eyebrow">02 / 보호자 동료</span><h3>좋은 질문을 건네요.</h3><p>아이의 이야기를 듣고, 함께 궁리해요.<br />안전을 살피고 만드는 손을 보태요.</p></article><article><span className="eyebrow">03 / AI 아이디어 도우미</span><h3>막힐 때 힌트를 줘요.</h3><p>꼭 사용하지 않아도 괜찮아요.<br />고르거나 바꾸는 것은 아이가 해요.</p></article></div>
-            <div className="welcome-bottom"><span>{camp.audience}<br />{camp.time} · 쉬는 시간 두 번</span><button className="primary-button" onClick={() => go(1)}>우리 가족, 시작하기 <span aria-hidden="true">↗</span></button></div>
+            <p className="quiet-note">웹 입력은 선택이며 새로고침하면 사라져요. 기록은 배부받은 학습지에 남겨 주세요.</p><div className="welcome-bottom"><span>{camp.audience}<br />{camp.time} · 쉬는 시간 두 번</span><button className="primary-button" onClick={() => go(1)}>우리 가족, 시작하기 <span aria-hidden="true">↗</span></button></div>
           </>}
 
           {step === 1 && <>
@@ -202,37 +227,38 @@ export default function Studio() {
           {step === 2 && <>
             <div className="limits-strip"><span>손바닥 크기 <strong>10cm 이내</strong></span><span>실제 만드는 조각 <strong>3개 이내</strong></span><span>방법 <strong>평면 → 세우기 → 붙이기</strong></span></div>
             {field("우리가 만들 발명품 이름", invention, setInvention, "아이가 정한 이름을 적어요", 40)}
+            {previousPlan && <button className="text-button" onClick={undoPlan}>이전 계획으로 되돌리기 ↶</button>}
             <details className="idea-drawer"><summary>함께 막혔나요? 아이디어 힌트 펼치기 <span aria-hidden="true">+</span></summary><div className="drawer-content"><p>아이의 생각을 먼저 들어 보셨나요? AI 답은 힌트예요. 우리 생각에 맞게 바꿔 주세요.</p>
               {field("힌트를 얻고 싶은 불편", problem, setProblem, "불편 한 가지만 적어요", 50)}
               <p className="quiet-note">AI를 요청하면 적은 불편과 이전 힌트가 Upstage Solar로 전송돼요. 이름·연락처는 적지 마세요. 준비된 힌트는 AI 요청 없이 볼 수 있어요.</p>
               <div className="button-row"><button className="primary-button" onClick={() => ask()} disabled={busy || cooldown > 0}>{busy ? "힌트를 생각하고 있어요…" : cooldown ? `${cooldown}초 후 다시 요청` : "아이디어 카드 3장 보기"}<span aria-hidden="true">↗</span></button><button className="secondary-button" onClick={prepared}>준비된 힌트 바로 보기</button></div>
               <p className="source-note" role="status" aria-live="polite">{busy ? "15초 안에 연결되지 않으면 예비 힌트를 보여드려요." : source}</p>
-              {!!ideas.length && <><div className="idea-grid">{ideas.map((idea, index) => <article className={`idea-card ${selected === idea.name ? "selected" : ""}`} key={`${idea.name}-${index}`}><span className="eyebrow">IDEA {String(index + 1).padStart(2, "0")} · {idea.parts.length}조각</span><h3>{idea.name}</h3><p>{idea.problem}</p><h4>필요한 조각</h4><ul>{idea.parts.map((part, i) => <li key={i}>{part.name} — {part.shape}</li>)}</ul><h4>이어 붙이는 방법</h4><p>{idea.assembly}</p><button className="secondary-button" onClick={() => choose(idea)} aria-pressed={selected === idea.name}>{selected === idea.name ? "선택한 힌트 ✓" : "이 힌트를 바꿔 볼래요"}</button></article>)}</div><div className="retry-buttons">{[["simpler", "더 간단하게"], ["two", "부품 2개로"], ["different", "다른 아이디어"]].map(([mode, label]) => <button disabled={busy || cooldown > 0} key={mode} onClick={() => ask(mode)}>{label} ↗</button>)}</div></>}
+              {!!ideas.length && <><div className="idea-grid">{ideas.map((idea, index) => <article className={`idea-card ${selected === idea.name ? "selected" : ""}`} key={`${idea.name}-${index}`}><span className="eyebrow">IDEA {String(index + 1).padStart(2, "0")} · {idea.parts.length}조각</span><h3>{idea.name}</h3><p>{idea.problem}</p><details><summary>조각과 조립 방법 보기</summary><h4>필요한 조각</h4><ul>{idea.parts.map((part, i) => <li key={i}>{part.name} — {part.shape}</li>)}</ul><h4>이어 붙이는 방법</h4><p>{idea.assembly}</p></details><button className="secondary-button" onClick={() => requestChoose(idea)} aria-pressed={selected === idea.name}>{selected === idea.name ? "선택한 힌트 ✓" : "이 힌트를 계획에 적용"}</button></article>)}</div><div className="retry-buttons">{[["simpler", "더 간단하게"], ["two", "부품 2개로"], ["different", "다른 아이디어"]].map(([mode, label]) => <button disabled={busy || cooldown > 0} key={mode} onClick={() => ask(mode)}>{label} ↗</button>)}</div></>}
             </div></details>
             {field("우리 생각으로 바꾸고 싶은 점", change, setChange, "모양, 쓰는 곳, 크기… 무엇을 바꿔 볼까요?")}
-            <div className="paper-prompt"><span className="eyebrow">배부받은 학습지에 그려요</span><h3>우리 발명의 모습을 스케치해요.</h3><p>종이 학습지에 손바닥 크기로 그리고, 실제 만들 조각을 세 개 이내로 나눠요. 그림을 잘 그리는 것보다 서로 설명하는 게 중요해요.</p><a className="text-button" href="/worksheet" target="_blank" rel="noreferrer">학습지 보기 ↗</a></div>
+            <div className="paper-prompt"><span className="eyebrow">배부받은 학습지에 그려요</span><h3>우리 생각 하나면 시작해도 좋아요.</h3><p>아이디어 세 칸을 모두 채우지 않아도 돼요. 발명품 이름은 위쪽 여백에 쓰고, 큰 그림은 뒷면에 그려도 좋아요. 실제 만들 조각은 세 개 이내로 나눠요.</p><h3>만들기 전에 선생님께 보여 주세요.</h3><p>손바닥 크기인지, 조각이 세 개 이내인지, 어디를 붙이면 서는지 함께 확인해요.</p><a className="text-button" href="/worksheet" target="_blank" rel="noreferrer">학습지 보기 ↗</a></div>
           </>}
 
           {step === 3 && <><div className="equipment-line"><span>오늘의 도구</span><strong>{camp.equipment.model}</strong><span>{camp.equipment.material}</span><strong className="accent">{camp.equipment.temperature}℃ 기준 · 뜨거워요</strong></div><div className="safety-grid">{camp.safety.map((item, index) => <label className={`safety-card ${safety[index] ? "checked" : ""}`} key={item.title}><input type="checkbox" checked={safety[index]} onChange={event => setSafety(items => items.map((value, i) => i === index ? event.target.checked : value))} /><span className="safety-number">{String(index + 1).padStart(2, "0")}</span><div><h3>{item.title}</h3><p>{item.detail}</p></div></label>)}</div><p className="safety-progress" role="status">함께 확인한 약속 {safety.filter(Boolean).length} / 6 · {allSafe ? "이제 선생님 안내에 따라 시작해요." : "모두 확인하면 펜 연습과 만들기를 시작할 수 있어요."}</p></>}
 
           {step === 4 && <><div className="practice-grid">{[{ n: "01", symbol: "·", title: "점과 선", text: "작은 점을 찍고, 천천히 선으로 이어 봐요." }, { n: "02", symbol: "≋", title: "평면 채우기", text: "도안 위에 선을 이어 빈 곳을 채워요." }, { n: "03", symbol: "⊥", title: "세워 붙이기", text: "식힌 평면 조각을 세우고, 연결 부분을 붙여요." }].map(item => <article key={item.n}><span className="eyebrow">TRY {item.n}</span><div className="practice-symbol" aria-hidden="true">{item.symbol}</div><h3>{item.title}</h3><p>{item.text}</p></article>)}</div><div className="paper-prompt"><h3>선생님이 보여 주면, 같이 따라 해요.</h3><p>필라멘트 넣기와 빼기는 실물 시연을 보고 해요. 잘 안 나오거나 펜이 이상하면 멈추고 도움을 요청해요.</p></div><div className="rest-strip"><span>PAUSE / 09:40–09:50</span><strong>우리도, 펜도 쉬어 가요.</strong><p>지정된 곳에 펜을 놓고 선생님 안내에 따라 쉬어요.</p></div></>}
 
-          {step === 5 && <><div className="build-tabs" role="group" aria-label="만들기 과정">{["01 / 부품 나누고 그리기", "02 / 세우고 조립하기"].map((label, index) => <button key={label} aria-pressed={buildPhase === index} className={index === buildPhase ? "active" : ""} onClick={() => { setBuildPhase(index); setSeconds((index ? 23 : 25) * 60); setRunning(false); }}>{label}</button>)}</div>
+          {step === 5 && <><div className="build-tabs" role="group" aria-label="만들기 과정">{["01 / 부품 나누고 그리기", "02 / 세우고 조립하기"].map((label, index) => <button key={label} aria-pressed={buildPhase === index} className={index === buildPhase ? "active" : ""} onClick={() => switchBuildPhase(index)}>{label}</button>)}</div>
             <div className="conversation-inline"><span className="eyebrow">서로에게 물어봐요</span><h2>“{buildPhase ? "어느 부분부터 붙이면 잘 설까?" : "어떤 조각을 함께 만들까?"}”</h2></div>
             {buildPhase === 0 ? <><p className="quiet-note">한 줄에 실제 조각 한 개를 적어요. 같은 벽 두 장이면 두 줄이에요. 빈 줄은 만들지 않아도 돼요.</p><div className="parts-table"><div className="parts-head"><span>조각</span><span>이름 / 모양</span><span>누가 만들까?</span><span>완료</span></div>{parts.map((part, index) => <div className="part-row" key={index}><span className="part-index">0{index + 1}</span><div><input aria-label={`${index + 1}번 조각 이름`} placeholder="조각 이름" value={part.name} maxLength={30} onChange={event => updatePart(index, "name", event.target.value)} /><input aria-label={`${index + 1}번 조각 모양`} placeholder="모양과 크기" value={part.shape} maxLength={60} onChange={event => updatePart(index, "shape", event.target.value)} /></div><select aria-label={`${index + 1}번 조각 담당`} value={part.owner} onChange={event => updatePart(index, "owner", event.target.value)}><option>함께</option><option>학생</option><option>보호자</option></select><input type="checkbox" aria-label={`${index + 1}번 조각 완성`} checked={part.done} onChange={event => updatePart(index, "done", event.target.checked)} /></div>)}</div><div className="rest-strip"><span>PAUSE / 10:30–10:40</span><strong>부품을 모으고, 잠깐 쉬어요.</strong><p>작품을 보며 서로 잘된 점을 하나씩 말해 주세요.</p></div></> : <>{field("우리의 조립 순서", assembly, setAssembly, "어떤 조각부터 세우고 붙일까요?", 200)}<div className="role-grid two"><article><span className="eyebrow">10:40–10:55</span><h3>먼저 튼튼하게 연결해요.</h3><p>평면 조각이 잘 서는지 함께 살펴요. 어려우면 조각 하나를 줄여도 좋아요.</p></article><article><span className="eyebrow">10:55–11:03</span><h3>마무리할 부분을 골라요.</h3><p>장식보다 가장 중요한 기능부터. 완성한 조각과 스케치만 소개해도 괜찮아요.</p></article></div></>}
             <div className="help-strip"><span className="help-dot" /><p>안전이 걱정되거나 펜이 이상하면 <strong>멈추고 손을 들어 선생님께 요청해요.</strong></p></div>
           </>}
 
-          {step === 6 && <><div className="presentation-card"><span className="eyebrow">우리 가족의 90초</span><h2>우리 발명품은<br /><em>{invention || "____________"}</em>이에요.</h2><p><strong>{problem || "____________"}</strong> 불편을 바꾸고 싶었어요.</p><p>우리는 <strong>{change || firstIdea || "____________"}</strong> 생각을 더했어요.</p></div><div className="role-grid two"><article><span className="eyebrow">학생이 먼저</span><h3>내가 결정한 것을 말해요.</h3><p>“내가 가장 마음에 드는 부분은…”<br />“다음에 바꾸고 싶은 부분은…”</p></article><article><span className="eyebrow">보호자가 한마디</span><h3>함께한 순간을 보태요.</h3><p>“아이가 이런 생각을 해서 놀랐어요.”<br />“이 질문을 나누면서 재미있었어요.”</p></article></div><p className="quiet-note">친구의 발표를 듣고, 잘한 점을 하나씩 찾아요. 미완성 작품도 도전한 이야기가 있어요.</p></>}
+          {step === 6 && <><div className="presentation-card"><span className="eyebrow">우리 가족의 90초</span><h2>학습지를 보며<br />우리 발명을 소개해요.</h2><p><strong>① 이름과 쓰임</strong> — {invention || "무엇을 만들었나요? 어디에 쓰나요?"}</p><p><strong>② 우리 생각</strong> — {change || firstIdea || "처음 생각에서 무엇을 바꾸었나요?"}</p><p><strong>③ 함께한 도전</strong> — 어느 부분이 어려웠고, 어떻게 도왔나요?</p></div><div className="role-grid two"><article><span className="eyebrow">학생이 먼저</span><h3>내가 결정한 것을 말해요.</h3><p>“내가 가장 마음에 드는 부분은…”<br />“다음에 바꾸고 싶은 부분은…”</p></article><article><span className="eyebrow">보호자가 한마디</span><h3>함께한 순간을 보태요.</h3><p>아이가 스스로 결정한 부분과 함께 나눈 질문 하나를 소개해 주세요.</p></article></div><p className="quiet-note">웹에 다시 입력하지 않아도 돼요. 미완성 작품은 만든 조각과 학습지를 함께 보여 주세요. 소개를 마친 가족부터 선생님 안내에 따라 펜을 정리해요.</p></>}
 
           {step === 7 && <>
-            {field("학생의 한마디", childMemory, setChildMemory, "보호자와 함께해서 가장 좋았던 순간은?")}
-            {field("보호자의 한마디", parentMemory, setParentMemory, "오늘 새롭게 발견한 아이의 모습은?")}
             <div className="finish-note"><span className="eyebrow">OUR BEST INVENTION</span><h2>함께 이야기하고,<br />함께 해낸 오늘.</h2><p>{camp.promise}</p></div>
             <div className="cleanup-list"><h3>추억을 챙기고, 안전하게 마무리해요.</h3>{["선생님 안내에 따라 필라멘트를 정리했어요", "전원을 분리하고 지정된 곳에서 펜을 식혀요", "작품과 활동지를 챙겼어요"].map((label, index) => <label key={label}><input type="checkbox" checked={cleanup[index]} onChange={event => setCleanup(items => items.map((value, i) => i === index ? event.target.checked : value))} />{label}</label>)}</div>
-            <RecordShare record={{ version: 1, title: camp.title, date: camp.date, place: camp.place, promise: camp.promise, problem, firstIdea, invention, change, selected, assembly, childMemory, parentMemory, parts }} />
+            <div className="paper-prompt"><h3>학습지와 작품을 사진으로 간직해요.</h3><p>먼저 펜을 지정된 곳에 두고 정리해요. 보호자 스마트폰으로 학습지와 작품을 촬영하고, 오늘 좋았던 순간을 서로에게 한마디씩 전해 주세요. 웹에 같은 내용을 다시 적지 않아도 돼요.</p></div>
+            <button className="secondary-button" aria-expanded={digitalRecord} onClick={() => setDigitalRecord(value => !value)}>웹 기록도 남기기 (선택) {digitalRecord ? "−" : "+"}</button>
+            {digitalRecord && <>{field("학생의 한마디", childMemory, setChildMemory, "보호자와 함께해서 가장 좋았던 순간은?")}{field("보호자의 한마디", parentMemory, setParentMemory, "오늘 새롭게 발견한 아이의 모습은?")}<p className="quiet-note">웹에 입력한 내용만 기록 이미지에 담겨요. 학습지의 그림은 포함되지 않아요.</p><RecordShare record={{ version: 1, title: camp.title, date: camp.date, place: camp.place, promise: camp.promise, problem, firstIdea, invention, change, selected, assembly, childMemory, parentMemory, parts }} /></>}
             <div className="button-row"><button className="secondary-button" onClick={() => setResetOpen(true)}>새 가족으로 시작</button></div>
-            <p className="quiet-note">입력은 현재 화면의 메모리에만 있어요. 새로고침하거나 닫기 전에 QR로 기록 이미지를 가져가세요. 사진·이름은 수집하지 않아요.</p>
+            <p className="quiet-note">학습지는 집으로 가져가세요. 웹 기록을 남겼다면 새로고침하거나 닫기 전에 원하는 기록 이미지를 저장해 주세요. 웹 입력은 현재 화면에만 있으며 사진·이름은 수집하지 않아요.</p>
           </>}
         </div>
 
@@ -240,6 +266,7 @@ export default function Studio() {
         <footer className="page-footer"><span>FAMILY INVENTION STUDIO</span><span>정답보다 대화, 완성보다 함께.</span></footer>
       </main>
     </div>
-    {resetOpen && <div className="dialog-backdrop"><section role="dialog" aria-modal="true" aria-labelledby="reset-title" className="reset-dialog"><h2 id="reset-title">새 가족으로 시작할까요?</h2><p>지금 적은 기록과 안전 확인이 모두 지워져요. 먼저 보호자 스마트폰에 기록 이미지를 저장했는지 확인해 주세요.</p><div className="button-row"><button autoFocus className="secondary-button" onClick={() => setResetOpen(false)}>계속 기록하기</button><button className="primary-button" onClick={reset}>지우고 시작</button></div></section></div>}
+    {resetOpen && <div className="dialog-backdrop"><section role="dialog" aria-modal="true" aria-labelledby="reset-title" className="reset-dialog"><h2 id="reset-title">새 가족으로 시작할까요?</h2><p>지금 적은 웹 기록과 안전 확인이 모두 지워져요. 원하는 학습지·작품 사진이나 웹 기록을 먼저 저장해 주세요.</p><div className="button-row"><button autoFocus className="secondary-button" onClick={() => setResetOpen(false)}>계속 기록하기</button><button className="primary-button" onClick={reset}>지우고 시작</button></div></section></div>}
+    {pendingIdea && <dialog ref={planDialogRef} aria-labelledby="plan-title" className="reset-dialog plan-dialog" onCancel={() => setPendingIdea(null)}><h2 id="plan-title">작성한 계획을 바꿀까요?</h2><p>발명품 이름·조각 계획·조립 순서가 ‘{pendingIdea.name}’ 힌트로 바뀌어요. 적용한 뒤에도 이전 계획으로 되돌릴 수 있어요.</p><div className="button-row"><button autoFocus className="secondary-button" onClick={() => setPendingIdea(null)}>내 계획 유지</button><button className="primary-button" onClick={() => choose(pendingIdea)}>힌트 적용</button></div></dialog>}
   </div>;
 }

@@ -53,6 +53,7 @@ try {
   await page.getByRole("button", { name: /02 \/ 세우고 조립하기/ }).click();
   await page.getByLabel("우리의 조립 순서").fill("받침 위에 산을 세워요.");
   await nav.getByRole("button", { name: /추억 남기기/ }).click();
+  await page.getByRole("button", { name: /웹 기록도 남기기/ }).click();
   await page.getByLabel("학생의 한마디").fill("함께 만들어서 즐거웠어요 💛");
   await page.getByLabel("보호자의 한마디").fill("아이의 새로운 생각을 발견했어요.");
   assert.ok(!(await page.locator("body").innerText()).includes("7가족"));
