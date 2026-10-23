@@ -69,7 +69,7 @@ export async function generateIdeas(problem: string, mode: IdeaMode, previous: I
     cache: "no-store",
     signal,
   });
-  if (!response.ok) { await response.body?.cancel(); throw new Error("provider"); }
+  if (!response.ok) { await response.body?.cancel(); throw new Error(`provider-${response.status}`); }
   // 응답 본문도 크기를 제한합니다. 외부 오류 본문·입력·키는 로그에 출력하지 않습니다.
   const reader = response.body?.getReader();
   if (!reader) throw new Error("empty");
@@ -85,7 +85,12 @@ export async function generateIdeas(problem: string, mode: IdeaMode, previous: I
   for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
   const completion = completionSchema.parse(JSON.parse(new TextDecoder().decode(bytes)));
   if (completion.choices[0].finish_reason !== "stop") throw new Error("incomplete");
-  const result = ideasSchema.parse(JSON.parse(completion.choices[0].message.content));
+  let parsed: unknown;
+  try { parsed = JSON.parse(completion.choices[0].message.content); }
+  catch { throw new Error("invalid-json"); }
+  const validated = ideasSchema.safeParse(parsed);
+  if (!validated.success) throw new Error("invalid-schema");
+  const result = validated.data;
   validateForClass(result.ideas, mode, previous);
   return result.ideas;
 }
