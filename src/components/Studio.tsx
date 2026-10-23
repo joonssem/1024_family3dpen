@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { camp } from "@/lib/camp";
 import { fallbackIdeas, ideasSchema, type Idea } from "@/lib/ideas";
 import RecordShare from "./RecordShare";
+import QRCode from "qrcode";
 
 type Part = { name: string; shape: string; owner: "함께" | "학생" | "보호자"; done: boolean };
 const blankParts = (): Part[] => Array.from({ length: 3 }, () => ({ name: "", shape: "", owner: "함께", done: false }));
@@ -51,6 +52,7 @@ export default function Studio() {
   const [showSchedule, setShowSchedule] = useState(false);
   const [resetOpen, setResetOpen] = useState(false);
   const [notice, setNotice] = useState("");
+  const [siteQr, setSiteQr] = useState("");
   const titleRef = useRef<HTMLHeadingElement>(null);
   const requestRef = useRef<AbortController | null>(null);
   const requestNumber = useRef(0);
@@ -71,6 +73,13 @@ export default function Studio() {
     return () => window.clearTimeout(id);
   }, [cooldown]);
   useEffect(() => () => requestRef.current?.abort(), []);
+  useEffect(() => {
+    let active = true;
+    QRCode.toDataURL("https://project-c9pas.vercel.app/", { width: 160, margin: 1, errorCorrectionLevel: "M" })
+      .then(url => { if (active) setSiteQr(url); })
+      .catch(() => undefined);
+    return () => { active = false; };
+  }, []);
 
   function go(index: number) {
     if (index < 0 || index >= camp.steps.length) return;
@@ -173,7 +182,7 @@ export default function Studio() {
         </section>
 
         {notice && <p className="notice" role="status">{notice}</p>}
-        {teacher && <section className="teacher-note"><span className="eyebrow">교사 진행 메모</span><p>{camp.teacherNotes[step]}</p><small>각 iPad는 가족이 직접 단계를 넘깁니다. 이 화면과 원격으로 동기화되지 않습니다.</small></section>}
+        {teacher && <section className="teacher-note"><span className="eyebrow">교사 진행 메모</span><p>{camp.teacherNotes[step]}</p><small>각 iPad는 가족이 직접 단계를 넘깁니다. 이 화면과 원격으로 동기화되지 않습니다.</small>{step === 0 && <div className="site-qr" style={{ display: "flex", alignItems: "center", gap: 16, marginTop: 14 }}><div style={{ display: "grid", justifyItems: "center", gap: 4, fontSize: 12 }}>{siteQr && <img src={siteQr} width="120" height="120" alt="가족 발명소 웹사이트 QR 코드" />}<span>가족 화면을 열어 주세요</span></div><p>아이패드 카메라로 스캔해<br />가족 발명소에 접속해요.</p></div>}</section>}
 
         <div className="stage-body">
           {step === 0 && <>
@@ -201,7 +210,7 @@ export default function Studio() {
               {!!ideas.length && <><div className="idea-grid">{ideas.map((idea, index) => <article className={`idea-card ${selected === idea.name ? "selected" : ""}`} key={`${idea.name}-${index}`}><span className="eyebrow">IDEA {String(index + 1).padStart(2, "0")} · {idea.parts.length}조각</span><h3>{idea.name}</h3><p>{idea.problem}</p><h4>필요한 조각</h4><ul>{idea.parts.map((part, i) => <li key={i}>{part.name} — {part.shape}</li>)}</ul><h4>이어 붙이는 방법</h4><p>{idea.assembly}</p><button className="secondary-button" onClick={() => choose(idea)} aria-pressed={selected === idea.name}>{selected === idea.name ? "선택한 힌트 ✓" : "이 힌트를 바꿔 볼래요"}</button></article>)}</div><div className="retry-buttons">{[["simpler", "더 간단하게"], ["two", "부품 2개로"], ["different", "다른 아이디어"]].map(([mode, label]) => <button disabled={busy || cooldown > 0} key={mode} onClick={() => ask(mode)}>{label} ↗</button>)}</div></>}
             </div></details>
             {field("우리 생각으로 바꾸고 싶은 점", change, setChange, "모양, 쓰는 곳, 크기… 무엇을 바꿔 볼까요?")}
-            <div className="paper-prompt"><span className="eyebrow">이제 종이에 그려요</span><h3>우리 발명의 모습을 스케치해요.</h3><p>활동지에 손바닥 크기로 그리고, 실제 만들 조각을 세 개 이내로 나눠요. 그림을 잘 그리는 것보다 서로 설명하는 게 중요해요.</p></div>
+            <div className="paper-prompt"><span className="eyebrow">아이패드 Freeform에서 그려보기</span><h3>우리 발명의 모습을 스케치해요.</h3><p>Freeform에 손바닥 크기로 그리고, 실제 만들 조각을 세 개 이내로 나눠요. 그림을 잘 그리는 것보다 서로 설명하는 게 중요해요.</p><a className="text-button" href="/worksheet" target="_blank" rel="noreferrer">종이 활동지도 열기 ↗</a></div>
           </>}
 
           {step === 3 && <><div className="equipment-line"><span>오늘의 도구</span><strong>{camp.equipment.model}</strong><span>{camp.equipment.material}</span><strong className="accent">{camp.equipment.temperature}℃ 기준 · 뜨거워요</strong></div><div className="safety-grid">{camp.safety.map((item, index) => <label className={`safety-card ${safety[index] ? "checked" : ""}`} key={item.title}><input type="checkbox" checked={safety[index]} onChange={event => setSafety(items => items.map((value, i) => i === index ? event.target.checked : value))} /><span className="safety-number">{String(index + 1).padStart(2, "0")}</span><div><h3>{item.title}</h3><p>{item.detail}</p></div></label>)}</div><p className="safety-progress" role="status">함께 확인한 약속 {safety.filter(Boolean).length} / 6 · {allSafe ? "이제 선생님 안내에 따라 시작해요." : "모두 확인하면 펜 연습과 만들기를 시작할 수 있어요."}</p></>}
